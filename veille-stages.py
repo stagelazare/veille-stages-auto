@@ -1,11 +1,5 @@
-# Script de Veille Automatisée des Offres de Stage/Emploi International
-# Version complète avec toutes les sources identifiées
-
 import requests
 from bs4 import BeautifulSoup
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 import datetime
 import time
 import re
@@ -13,20 +7,14 @@ import os
 import json
 from urllib.parse import urljoin, urlparse
 
-class VeilleStagesComplet:
+class VeilleStagesTelegram:
     def __init__(self):
-        # Configuration email (à remplir dans GitHub Secrets)
-        self.smtp_server = "smtp.gmail.com"
-        self.smtp_port = 587
-        self.email_from = os.environ.get('EMAIL_FROM')
-        self.email_password = os.environ.get('EMAIL_PASSWORD')
-        self.email_to = os.environ.get('EMAIL_TO')
-        
-        # Date d'hier pour filtrer les nouvelles offres
+        # Configuration Telegram
+        self.telegram_token = os.environ.get('TELEGRAM_TOKEN')
+        self.telegram_chat_id = os.environ.get('TELEGRAM_CHAT_ID')
+
         self.hier = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
         self.aujourd_hui = datetime.date.today().isoformat()
-        
-        # Mots-clés pour filtrer les offres pertinentes
         self.keywords = [
             "relations internationales", "international relations", "diplomatie", "diplomacy",
             "sécurité internationale", "international security", "défense", "defense",
@@ -554,44 +542,36 @@ class VeilleStagesComplet:
         """
 
     def envoyer_rapport(self, nouvelles_offres):
-        """Envoie le rapport par email avec sujet enrichi"""
-        if not self.email_from or not self.email_password or not self.email_to:
-            print("❌ Configuration email manquante dans les variables d'environnement")
+        """Envoie le rapport sur Telegram"""
+        if not self.telegram_token or not self.telegram_chat_id:
+            print("❌ Telegram non configuré")
             return False
-        
-        try:
-            # Calcul des statistiques pour le sujet
-            prioritaires = len([o for o in nouvelles_offres if self.est_offre_prioritaire(o)])
-            
-            if prioritaires > 0:
-                sujet = f"🔥 {prioritaires} offre(s) prioritaire(s) + {len(nouvelles_offres)-prioritaires} autres - {self.aujourd_hui}"
-            elif nouvelles_offres:
-                sujet = f"🎯 {len(nouvelles_offres)} nouvelle(s) offre(s) - {self.aujourd_hui}"
-            else:
-                sujet = f"📭 Aucune nouvelle offre - {self.aujourd_hui}"
-            
-            msg = MIMEMultipart('alternative')
-            msg['Subject'] = sujet
-            msg['From'] = self.email_from
-            msg['To'] = self.email_to
-            
-            # Version HTML
-            html_content = self.generer_rapport_html(nouvelles_offres)
-            html_part = MIMEText(html_content, 'html', 'utf-8')
-            msg.attach(html_part)
-            
-            # Envoi via SMTP
-            with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
-                server.starttls()
-                server.login(self.email_from, self.email_password)
-                server.sendmail(self.email_from, self.email_to, msg.as_string())
-            
-            print(f"✅ Rapport envoyé avec succès à {self.email_to}")
+
+        # Compose un message texte (4096 caractères max)
+        if nouvelles_offres:
+            texte = f"🎯 {len(nouvelles_offres)} nouvelles offres :\n"
+            for offre in nouvelles_offres[:10]:  # Limite à 10 pour Telegram
+                priorite = "🔥" if self.est_offre_prioritaire(offre) else "📄"
+                texte += f"{priorite} {offre['titre']} ({offre['organisation']})\n{offre['lien']}\n"
+            if len(nouvelles_offres) > 10:
+                texte += f"... et {len(nouvelles_offres) - 10} autres offres (voir fichier JSON)\n"
+        else:
+            texte = "📭 Aucune nouvelle offre aujourd'hui."
+
+        url = f"https://api.telegram.org/bot{self.telegram_token}/sendMessage"
+        payload = {
+            'chat_id': self.telegram_chat_id,
+            'text': texte,
+            'parse_mode': 'Markdown'
+        }
+        resp = requests.post(url, data=payload, timeout=10)
+        if resp.ok:
+            print("✅ Rapport envoyé sur Telegram")
             return True
-            
-        except Exception as e:
-            print(f"❌ Erreur lors de l'envoi de l'email: {e}")
+        else:
+            print("❌ Erreur Telegram:", resp.text)
             return False
+
 
     def sauvegarder_resultats(self, nouvelles_offres):
         """Sauvegarde les résultats avec métadonnées enrichies"""
@@ -703,6 +683,6 @@ class VeilleStagesComplet:
 
 # Point d'entrée principal
 if __name__ == "__main__":
-    print("🔍 Initialisation du système de veille...")
-    veille = VeilleStagesComplet()
+    print("🔍 Initialisation du système de veille Telegram...")
+    veille = VeilleStagesTelegram()
     veille.executer_veille()
