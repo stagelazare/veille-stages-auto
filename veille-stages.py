@@ -5,16 +5,21 @@ import time
 import re
 import os
 import json
+import feedparser
+import certifi
 from urllib.parse import urljoin, urlparse
 
-class VeilleStagesTelegram:
+class VeilleStagesComplete:
     def __init__(self):
-        # Configuration Telegram
+        # Configuration Telegram via GitHub Secrets
         self.telegram_token = os.environ.get('TELEGRAM_TOKEN')
         self.telegram_chat_id = os.environ.get('TELEGRAM_CHAT_ID')
 
+        # Dates
         self.hier = (datetime.date.today() - datetime.timedelta(days=1)).isoformat()
         self.aujourd_hui = datetime.date.today().isoformat()
+
+        # Mots-clés de filtrage
         self.keywords = [
             "relations internationales", "international relations", "diplomatie", "diplomacy",
             "sécurité internationale", "international security", "défense", "defense",
@@ -27,12 +32,11 @@ class VeilleStagesTelegram:
             "bachelor", "licence", "césure", "gap year", "6 mois", "12 mois",
             "vie", "via", "volontariat international"
         ]
-        
-        # Sources complètes à surveiller
+
+        # Sources HTML
         self.sources = [
-            # === MINISTÈRE DE L'EUROPE ET DES AFFAIRES ÉTRANGÈRES ===
             {
-                "nom": "France Diplomatie - Stages",
+                "nom": "France Diplomatie",
                 "url": "https://www.diplomatie.gouv.fr/fr/emplois-stages-concours/",
                 "selector": ".job-listing, .offre",
                 "date_selector": ".date-posted, .date",
@@ -296,7 +300,17 @@ class VeilleStagesTelegram:
                 "description_selector": ".description"
             }
         ]
-        
+
+         self.rss_urls = [
+            "https://www.indeed.fr/rss?q=stage+relations+internationales",
+            "https://euraxess.ec.europa.eu/jobs/feed",
+            "https://reliefweb.int/feeds/world",
+            "https://www.devex.com/jobs/feed",
+            "https://careers.un.org/feed/RSS.aspx?Lang=FR",
+            "https://jobs.osce.org/feed",
+            "https://www.diplomatie.gouv.fr/fr/actualites/rss/"
+        ]
+
         # Sources spécifiques par zone géographique
         self.sources_zones = {
             "Canada": [
@@ -309,380 +323,124 @@ class VeilleStagesTelegram:
             ]
         }
 
+def extraire_offres_rss(self, url):
+        print(f"🔍 Extraction RSS {url}...")
+        feed = feedparser.parse(url)
+        offres = []
+        for entry in feed.entries:
+            date_pub = entry.get('published', entry.get('updated', ''))
+            titre = entry.get('title', '')
+            lien = entry.get('link', '')
+            desc = entry.get('summary', '')[:200] + '...'
+            texte = f"{titre} {desc}".lower()
+            if any(kw in texte for kw in self.keywords):
+                offres.append({
+                    'date': date_pub,
+                    'organisation': 'RSS',
+                    'titre': titre,
+                    'lieu': '',
+                    'lien': lien,
+                    'description': desc
+                })
+        print(f"✅ {len(offres)} offres RSS trouvées")
+        return offres
+
+
+    
+    
     def extraire_offres_site(self, source):
-        """Extrait les offres d'un site donné avec gestion d'erreur renforcée"""
-        print(f"🔍 Extraction des offres de {source['nom']}...")
-        
+        print(f"🔍 Extraction HTML {source['nom']}...")
         try:
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-            }
-            
-            response = requests.get(source['url'], headers=headers, timeout=30)
-            response.raise_for_status()
-            
+            headers = {'User-Agent': 'Mozilla/5.0'}
+            response = requests.get(source['url'], headers=headers,
+                                    timeout=30, verify=certifi.where())
+            if response.status_code not in (200, 301, 302):
+                print(f"⚠️ Statut {response.status_code} pour {source['nom']}")
+                return []
             soup = BeautifulSoup(response.text, 'html.parser')
             offres = []
-            
-            # Recherche des offres selon les sélecteurs du site
-            job_listings = soup.select(source['selector'])
-            
-            for job in job_listings[:15]:  # Limite à 15 offres par site
+            for job in soup.select(source['selector'])[:15]:
                 try:
-                    # Extraction des informations
-                    titre_elem = job.select_one(source['title_selector'])
-                    titre = titre_elem.get_text(strip=True) if titre_elem else "Titre non disponible"
-                    
+                    titre = job.select_one(source['title_selector']).get_text(strip=True)
                     link_elem = job.select_one(source['link_selector'])
-                    if link_elem and link_elem.get('href'):
-                        lien = urljoin(source['url'], link_elem['href'])
-                    else:
-                        lien = source['url']
-                    
-                    lieu_elem = job.select_one(source['location_selector'])
-                    lieu = lieu_elem.get_text(strip=True) if lieu_elem else "Lieu non spécifié"
-                    
-                    desc_elem = job.select_one(source['description_selector'])
-                    description = desc_elem.get_text(strip=True)[:300] + "..." if desc_elem else "Description non disponible"
-                    
-                    date_elem = job.select_one(source['date_selector'])
-                    date_pub = date_elem.get_text(strip=True) if date_elem else self.aujourd_hui
-                    
-                    # Vérifier si l'offre contient des mots-clés pertinents
-                    texte_complet = f"{titre} {description} {lieu}".lower()
-                    if any(keyword.lower() in texte_complet for keyword in self.keywords):
-                        
-                        # Filtrage par zones géographiques ciblées
-                        zones_cibles = [
-                            "europe", "france", "canada", "moyen-orient", "middle east",
-                            "proche-orient", "near east", "iran", "israel", "palestine",
-                            "syrie", "liban", "jordanie", "turquie", "egypt", "maroc",
-                            "allemagne", "espagne", "italie", "belgique", "pays-bas",
-                            "suisse", "royaume-uni", "bruxelles", "genève", "strasbourg"
-                        ]
-                        
-                        if any(zone in texte_complet for zone in zones_cibles):
-                            offres.append({
-                                'date': date_pub,
-                                'organisation': source['nom'],
-                                'titre': titre,
-                                'lieu': lieu,
-                                'lien': lien,
-                                'description': description,
-                                'mots_cles': [kw for kw in self.keywords if kw.lower() in texte_complet]
-                            })
-                        
+                    lien = urljoin(source['url'], link_elem['href']) if link_elem else source['url']
+                    lieu = job.select_one(source['location_selector']).get_text(strip=True)
+                    desc = job.select_one(source['description_selector']).get_text(strip=True)[:300] + "..."
+                    date_pub = job.select_one(source['date_selector']).get_text(strip=True)
+                    texte = f"{titre} {desc} {lieu}".lower()
+                    if any(kw in texte for kw in self.keywords):
+                        offres.append({
+                            'date': date_pub,
+                            'organisation': source['nom'],
+                            'titre': titre,
+                            'lieu': lieu,
+                            'lien': lien,
+                            'description': desc
+                        })
                 except Exception as e:
-                    print(f"❌ Erreur lors de l'extraction d'une offre de {source['nom']}: {e}")
-                    continue
-            
-            print(f"✅ {len(offres)} offres pertinentes trouvées sur {source['nom']}")
+                    print(f"⚠️ Erreur offre {source['nom']}: {e}")
+            print(f"✅ {len(offres)} offres HTML trouvées")
             return offres
-            
-        except requests.RequestException as e:
-            print(f"❌ Erreur de connexion à {source['nom']}: {e}")
-            return []
         except Exception as e:
-            print(f"❌ Erreur lors de l'extraction de {source['nom']}: {e}")
+            print(f"❌ Erreur connexion {source['nom']}: {e}")
             return []
 
     def filtrer_nouvelles_offres(self, offres):
-        """Filtre et priorise les offres selon les critères spécifiques"""
-        nouvelles_offres = []
-        offres_prioritaires = []
-        
-        for offre in offres:
-            if self.est_offre_pertinente(offre):
-                # Priorisation des offres
-                if self.est_offre_prioritaire(offre):
-                    offres_prioritaires.append(offre)
-                else:
-                    nouvelles_offres.append(offre)
-        
-        # Retourner d'abord les prioritaires, puis les autres
-        return offres_prioritaires + nouvelles_offres[:20]  # Limite totale
+        nouvelles = []
+        for o in offres:
+            if self.est_offre_pertinente(o):
+                nouvelles.append(o)
+        return nouvelles
 
-    def est_offre_pertinente(self, offre):
-        """Vérifie si une offre correspond aux critères recherchés"""
-        titre_desc = f"{offre['titre']} {offre['description']}".lower()
-        
-        # Critères de durée
-        duree_keywords = [
-            "6 mois", "12 mois", "1 an", "24 mois", "18 mois",
-            "avril 2026", "2026", "2027", "long terme"
-        ]
-        
-        # Critères de niveau
-        niveau_keywords = [
-            "bachelor", "licence", "bac+3", "master 1", "m1",
-            "césure", "gap year", "jeune diplômé", "débutant"
-        ]
-        
-        # Vérification des critères
-        a_duree = any(duree in titre_desc for duree in duree_keywords)
-        a_niveau = any(niveau in titre_desc for niveau in niveau_keywords)
-        a_domaine = any(kw in titre_desc for kw in ["relations internationales", "diplomatie", "sécurité", "moyen-orient", "international"])
-        
-        return a_duree or a_niveau or a_domaine
+    def est_offre_pertinente(self, o):
+        t = f"{o['titre']} {o['description']}".lower()
+        return any(kw in t for kw in self.keywords)
 
-    def est_offre_prioritaire(self, offre):
-        """Identifie les offres à forte priorité"""
-        titre_desc = f"{offre['titre']} {offre['description']}".lower()
-        
-        priorite_keywords = [
-            "iran", "moyen-orient", "middle east", "sécurité internationale",
-            "vie", "via", "stage diplomatie", "ambassade", "consulat",
-            "think tank", "april 2026", "avril 2026"
-        ]
-        
-        return any(kw in titre_desc for kw in priorite_keywords)
+    def est_offre_prioritaire(self, o):
+        t = f"{o['titre']} {o['description']}".lower()
+        return any(kw in t for kw in ["iran","moyen-orient","security","via","vie"])
 
-    def generer_rapport_html(self, nouvelles_offres):
-        """Génère un rapport HTML enrichi des nouvelles offres"""
-        if not nouvelles_offres:
-            return f"""
-            <html>
-            <head>
-                <title>Veille Stages - {self.aujourd_hui}</title>
-                <meta charset="UTF-8">
-            </head>
-            <body style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px;">
-                <h2>🔍 Veille quotidienne des stages & emplois internationaux</h2>
-                <p><strong>Date:</strong> {self.aujourd_hui}</p>
-                <p>Aucune nouvelle offre trouvée aujourd'hui.</p>
-                <hr>
-                <p><em>Domaines surveillés:</em> Relations internationales, Diplomatie, Sécurité internationale, Moyen-Orient, Iran, Proche-Orient</p>
-                <p><em>Zones:</em> Europe, Canada, Moyen-Orient, Proche-Orient</p>
-                <p><em>Profil:</em> Fin de licence/Bachelor, durée 6-12 mois, avril 2026-avril 2027</p>
-            </body>
-            </html>
-            """
-        
-        # Séparer les offres prioritaires des autres
-        prioritaires = [o for o in nouvelles_offres if self.est_offre_prioritaire(o)]
-        normales = [o for o in nouvelles_offres if not self.est_offre_prioritaire(o)]
-        
-        html = f"""
-        <html>
-        <head>
-            <title>Nouvelles offres - {self.aujourd_hui}</title>
-            <meta charset="UTF-8">
-            <style>
-                body {{ font-family: Arial, sans-serif; max-width: 900px; margin: 0 auto; padding: 20px; }}
-                .offre {{ border: 1px solid #ddd; margin: 15px 0; padding: 15px; border-radius: 8px; }}
-                .offre-prioritaire {{ border-left: 5px solid #e53e3e; background-color: #fff5f5; }}
-                .titre {{ color: #2c5282; font-weight: bold; font-size: 18px; }}
-                .organisation {{ color: #718096; font-weight: bold; }}
-                .lieu {{ color: #e53e3e; }}
-                .date {{ color: #38a169; font-size: 12px; }}
-                .description {{ margin-top: 10px; color: #4a5568; }}
-                .mots-cles {{ margin-top: 5px; font-size: 11px; color: #805ad5; }}
-                .lien {{ margin-top: 10px; }}
-                a {{ color: #3182ce; text-decoration: none; }}
-                a:hover {{ text-decoration: underline; }}
-                .stats {{ background-color: #f7fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px; }}
-            </style>
-        </head>
-        <body>
-            <h2>🎯 Nouvelles offres de stage/emploi - {self.aujourd_hui}</h2>
-            
-            <div class="stats">
-                <strong>📊 Résumé:</strong>
-                <ul>
-                    <li><strong>{len(nouvelles_offres)} nouvelle(s) offre(s)</strong> trouvée(s)</li>
-                    <li><strong>{len(prioritaires)} offre(s) prioritaire(s)</strong> (forte correspondance)</li>
-                    <li><strong>{len(normales)} offre(s) standard(s)</strong></li>
-                </ul>
-            </div>
-            <hr>
-        """
-        
-        # Affichage des offres prioritaires en premier
-        if prioritaires:
-            html += "<h3>🔥 Offres prioritaires</h3>"
-            for offre in prioritaires:
-                html += self.generer_html_offre(offre, prioritaire=True)
-        
-        if normales:
-            html += "<h3>📋 Autres offres pertinentes</h3>"
-            for offre in normales:
-                html += self.generer_html_offre(offre, prioritaire=False)
-        
-        html += f"""
-            <hr>
-            <p><em>🤖 Veille automatisée - Relations internationales, Diplomatie, Sécurité, Moyen-Orient</em></p>
-            <p><em>🎯 Profil ciblé: Fin de licence/Bachelor, durée 6-12 mois, avril 2026-avril 2027</em></p>
-            <p><em>🌍 Zones: Europe, Canada, Moyen-Orient, Proche-Orient</em></p>
-            <p><em>📧 Rapport généré automatiquement par GitHub Actions</em></p>
-        </body>
-        </html>
-        """
-        
-        return html
-
-    def generer_html_offre(self, offre, prioritaire=False):
-        """Génère le HTML pour une offre individuelle"""
-        classe_css = "offre offre-prioritaire" if prioritaire else "offre"
-        
-        mots_cles_html = ""
-        if offre.get('mots_cles'):
-            mots_cles_html = f'<div class="mots-cles">🔑 Mots-clés: {", ".join(offre["mots_cles"][:5])}</div>'
-        
-        return f"""
-        <div class="{classe_css}">
-            <div class="titre">{"🔥 " if prioritaire else ""}{offre['titre']}</div>
-            <div class="organisation">📍 {offre['organisation']} - {offre['lieu']}</div>
-            <div class="date">📅 Publié: {offre['date']}</div>
-            <div class="description">{offre['description']}</div>
-            {mots_cles_html}
-            <div class="lien">
-                <a href="{offre['lien']}" target="_blank">🔗 Voir l'offre complète</a>
-            </div>
-        </div>
-        """
-
-    def envoyer_rapport(self, nouvelles_offres):
-        """Envoie le rapport sur Telegram"""
+    def envoyer_rapport(self, offres):
         if not self.telegram_token or not self.telegram_chat_id:
             print("❌ Telegram non configuré")
-            return False
-
-        # Compose un message texte (4096 caractères max)
-        if nouvelles_offres:
-            texte = f"🎯 {len(nouvelles_offres)} nouvelles offres :\n"
-            for offre in nouvelles_offres[:10]:  # Limite à 10 pour Telegram
-                priorite = "🔥" if self.est_offre_prioritaire(offre) else "📄"
-                texte += f"{priorite} {offre['titre']} ({offre['organisation']})\n{offre['lien']}\n"
-            if len(nouvelles_offres) > 10:
-                texte += f"... et {len(nouvelles_offres) - 10} autres offres (voir fichier JSON)\n"
+            return
+        if offres:
+            text = f"🎯 {len(offres)} offres détectées :\n"
+            for o in offres[:10]:
+                prio = "🔥" if self.est_offre_prioritaire(o) else "📄"
+                text += f"{prio} {o['titre']} - {o['organisation']}\n{o['lien']}\n"
+            if len(offres)>10:
+                text += f"... et {len(offres)-10} autres\n"
         else:
-            texte = "📭 Aucune nouvelle offre aujourd'hui."
-
+            text = "📭 Aucune nouvelle offre"
         url = f"https://api.telegram.org/bot{self.telegram_token}/sendMessage"
-        payload = {
+        resp = requests.post(url, data={
             'chat_id': self.telegram_chat_id,
-            'text': texte,
+            'text': text,
             'parse_mode': 'Markdown'
-        }
-        resp = requests.post(url, data=payload, timeout=10)
-        if resp.ok:
-            print("✅ Rapport envoyé sur Telegram")
-            return True
-        else:
-            print("❌ Erreur Telegram:", resp.text)
-            return False
+        })
+        print("✅ Telegram status", resp.status_code)
 
-
-    def sauvegarder_resultats(self, nouvelles_offres):
-        """Sauvegarde les résultats avec métadonnées enrichies"""
-        filename = f"offres_{self.aujourd_hui}.json"
-        
-        try:
-            # Statistiques détaillées
-            stats = {
-                'date_execution': self.aujourd_hui,
-                'nombre_total_offres': len(nouvelles_offres),
-                'nombre_prioritaires': len([o for o in nouvelles_offres if self.est_offre_prioritaire(o)]),
-                'sources_actives': len(self.sources),
-                'zones_ciblées': ["Europe", "Canada", "Moyen-Orient", "Proche-Orient"],
-                'mots_cles_recherches': self.keywords,
-                'criteres_duree': ["6 mois", "12 mois", "avril 2026-avril 2027"],
-                'profil_cible': "Fin de licence/bachelor, césure"
-            }
-            
-            # Groupement des offres par organisation
-            offres_par_org = {}
-            for offre in nouvelles_offres:
-                org = offre['organisation']
-                if org not in offres_par_org:
-                    offres_par_org[org] = []
-                offres_par_org[org].append(offre)
-            
-            data = {
-                'statistiques': stats,
-                'offres_par_organisation': offres_par_org,
-                'toutes_offres': nouvelles_offres
-            }
-            
-            with open(filename, 'w', encoding='utf-8') as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
-            
-            print(f"💾 Résultats sauvegardés dans {filename}")
-            
-        except Exception as e:
-            print(f"❌ Erreur lors de la sauvegarde: {e}")
+    def sauvegarder_resultats(self, offres):
+        fn = f"offres_{self.aujourd_hui}.json"
+        with open(fn,'w',encoding='utf-8') as f:
+            json.dump(offres, f, ensure_ascii=False, indent=2)
+        print(f"💾 Sauvegardé {fn}")
 
     def executer_veille(self):
-        """Exécute le processus complet de veille avec monitoring avancé"""
-        print(f"🚀 Début de la veille quotidienne - {self.aujourd_hui}")
-        print("=" * 80)
-        print(f"📊 Configuration:")
-        print(f"   • {len(self.sources)} sources à surveiller")
-        print(f"   • {len(self.keywords)} mots-clés de recherche")
-        print(f"   • Zones ciblées: Europe, Canada, Moyen-Orient, Proche-Orient")
-        print(f"   • Profil: Fin licence/bachelor, 6-12 mois, avril 2026-avril 2027")
-        print("=" * 80)
-        
-        toutes_offres = []
-        sources_reussies = 0
-        sources_echec = 0
-        
-        # Extraction des offres de chaque source
-        for i, source in enumerate(self.sources, 1):
-            print(f"[{i}/{len(self.sources)}] Processing {source['nom']}...")
-            
-            try:
-                offres_site = self.extraire_offres_site(source)
-                if offres_site:
-                    toutes_offres.extend(offres_site)
-                    sources_reussies += 1
-                else:
-                    sources_echec += 1
-                    
-            except Exception as e:
-                print(f"❌ Échec complet pour {source['nom']}: {e}")
-                sources_echec += 1
-                
-            time.sleep(2)  # Pause respectueuse entre les requêtes
-        
-        # Filtrage et priorisation des offres
-        nouvelles_offres = self.filtrer_nouvelles_offres(toutes_offres)
-        prioritaires = [o for o in nouvelles_offres if self.est_offre_prioritaire(o)]
-        
-        print("=" * 80)
-        print(f"📊 RÉSULTATS DE LA VEILLE:")
-        print(f"   • Sources interrogées: {len(self.sources)}")
-        print(f"   • Sources réussies: {sources_reussies}")
-        print(f"   • Sources en échec: {sources_echec}")
-        print(f"   • Total offres collectées: {len(toutes_offres)}")
-        print(f"   • Offres pertinentes: {len(nouvelles_offres)}")
-        print(f"   • Offres prioritaires: {len(prioritaires)}")
-        print("=" * 80)
-        
-        # Sauvegarde et envoi du rapport
-        if nouvelles_offres or True:  # Toujours envoyer un rapport, même vide
-            self.sauvegarder_resultats(nouvelles_offres)
-            self.envoyer_rapport(nouvelles_offres)
-            
-            if nouvelles_offres:
-                print("\n📋 NOUVELLES OFFRES TROUVÉES:")
-                for i, offre in enumerate(nouvelles_offres[:10], 1):  # Afficher max 10
-                    priorite = "🔥" if self.est_offre_prioritaire(offre) else "📄"
-                    print(f"{i}. {priorite} {offre['titre']}")
-                    print(f"   🏢 {offre['organisation']} ({offre['lieu']})")
-                    print(f"   🔗 {offre['lien']}")
-                    print()
-                    
-                if len(nouvelles_offres) > 10:
-                    print(f"   ... et {len(nouvelles_offres) - 10} autres offres (voir email)")
-            else:
-                print("   • Aucune nouvelle offre pertinente trouvée")
-        
-        print(f"✅ Veille terminée - {datetime.datetime.now().strftime('%H:%M:%S')}")
-        print("📨 Rapport envoyé sur Telegram")
+        print(f"🚀 Veille {self.aujourd_hui}")
+        toutes = []
+        for src in self.sources:
+            toutes += self.extraire_offres_site(src)
+            time.sleep(1)
+        for rss in self.rss_urls:
+            toutes += self.extraire_offres_rss(rss)
+            time.sleep(1)
+        nouvelles = self.filtrer_nouvelles_offres(toutes)
+        self.sauvegarder_resultats(nouvelles)
+        self.envoyer_rapport(nouvelles)
+        print("✅ Terminé")
 
-# Point d'entrée principal
 if __name__ == "__main__":
-    print("🔍 Initialisation du système de veille Telegram...")
-    veille = VeilleStagesTelegram()
+    veille = VeilleStagesComplete()
     veille.executer_veille()
