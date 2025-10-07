@@ -134,17 +134,28 @@ class VeilleStagesComplete:
 
         self.keywords = [k.lower() for k in base_ir + larges]
 
-        # Zones géographiques cibles (filtrage assoupli)
+        # Zones géographiques cibles — ENRICHI
         self.zones = [z.lower() for z in [
-            "europe", "france", "royaume-uni", "uk", "londres", "bruxelles", "brussels",
-            "strasbourg", "genève", "geneva", "berlin", "rome", "madrid", "lisbon", "vienna",
-            "canada", "ottawa", "montreal", "montréal", "toronto", "vancouver",
-            "moyen-orient", "proche-orient", "middle east", "near east", "iran", "turkey",
-            "lebanon", "syria", "iraq", "saudi", "uae", "qatar", "oman", "yemen", "israel",
-            "palestine", "egypt", "jordan", "armenia", "azerbaijan", "georgia"
+            # Europe & institutions
+            "europe","union européenne","ue","france","paris","royaume-uni","uk","londres","london",
+            "belgique","bruxelles","brussels","allemagne","berlin","espagne","madrid","italie","rome",
+            "portugal","lisbonne","autriche","vienne","vienna","pologne","varsovie","warsaw","pays-bas",
+            "la haye","hague","grèce","athènes","athens","suède","stockholm","norvège","oslo","finlande",
+            "helsinki","danemark","copenhague","copenhagen","irlande","dublin","suisse","berne","genève",
+            "strasbourg","luxembourg",
+            # Amériques
+            "canada","ottawa","montréal","toronto","québec","vancouver","etats-unis","états-unis","usa",
+            "washington","new york","boston","san francisco","los angeles","chicago",
+            # Moyen-Orient & voisins
+            "moyen-orient","proche-orient","middle east","near east","iran","téhéran","tehran",
+            "turquie","ankara","istanbul","liban","beyrouth","lebanon","syrie","damas","iraq","irak",
+            "bagdad","saoudite","riyad","arabie saoudite","émirats","uae","abou dhabi","dubai","qatar",
+            "doha","oman","muscat","yemen","sanaa","israel","tel aviv","jerusalem","palestine","ramallah",
+            "egypte","le caire","cairo","jordanie","amman","arménie","erevan","yerevan","azerbaïdjan",
+            "bakou","georgia","géorgie","tbilissi"
         ]]
 
-        # Fenêtre temporelle indicative demandée dans votre brief
+        # Fenêtre temporelle indicative
         self.duree_terms = [t.lower() for t in [
             "6 mois", "12 mois", "1 an", "18 mois", "24 mois",
             "avril 2026", "2026", "2027", "long term", "long terme"
@@ -196,7 +207,7 @@ class VeilleStagesComplete:
                 "location_selector": "em, strong, .location",
                 "description_selector": "p"
             },
-                        {
+            {
                 "nom": "AFD - Agence Française de Développement",
                 "url": "https://www.afd.fr/fr/carrieres",
                 "selector": ".job-offer, .offre-emploi",
@@ -256,8 +267,6 @@ class VeilleStagesComplete:
                 "location_selector": ".location",
                 "description_selector": ".description"
             },
-            
-            # === OPÉRATEURS MEAE - CULTURE, ÉDUCATION, FRANCOPHONIE ===
             {
                 "nom": "Institut français",
                 "url": "https://www.institutfrancais.com/fr/carrieres",
@@ -288,8 +297,6 @@ class VeilleStagesComplete:
                 "location_selector": ".location",
                 "description_selector": ".excerpt"
             },
-            
-            # === OPÉRATEURS MEAE - COMMERCE EXTÉRIEUR ===
             {
                 "nom": "Business France - VIE/VIA",
                 "url": "https://mon-vie-via.businessfrance.fr/",
@@ -310,8 +317,6 @@ class VeilleStagesComplete:
                 "location_selector": ".location",
                 "description_selector": ".summary"
             },
-            
-            # === ORGANISATIONS INTERNATIONALES ===
             {
                 "nom": "ONU Carrières",
                 "url": "https://careers.un.org/lbw/home.aspx?lang=FR",
@@ -342,8 +347,6 @@ class VeilleStagesComplete:
                 "location_selector": ".location",
                 "description_selector": ".description"
             },
-            
-            # === UNION EUROPÉENNE ===
             {
                 "nom": "Commission européenne - Stages",
                 "url": "https://ec.europa.eu/stages/home_fr",
@@ -384,8 +387,6 @@ class VeilleStagesComplete:
                 "location_selector": ".location",
                 "description_selector": ".description"
             },
-            
-            # === THINK TANKS ET INSTITUTS ===
             {
                 "nom": "IFRI",
                 "url": "https://www.ifri.org/fr/recrutement",
@@ -416,8 +417,6 @@ class VeilleStagesComplete:
                 "location_selector": ".location",
                 "description_selector": ".excerpt"
             },
-            
-            # === AUTRES SOURCES IMPORTANTES ===
             {
                 "nom": "Trésor International",
                 "url": "https://www.tresor.economie.gouv.fr/tresor-international",
@@ -439,6 +438,99 @@ class VeilleStagesComplete:
                 "description_selector": ".description"
             }
         ]
+
+        # === GÉNÉRATEUR D’AMBASSADES/REPRÉSENTATIONS — « VRAIMENT UN MAX » ===
+        def build_embassy_sources():
+            """
+            À partir d’une liste d’URL de base ambafrance.org (et représentations),
+            on essaie de trouver une page 'offres' probable en testant des chemins
+            fréquents. On retourne une liste de dictionnaires sources compatibles
+            avec extraire_offres_html().
+            """
+            base_urls = [
+                # Europe
+                "https://uk.ambafrance.org", "https://be.ambafrance.org", "https://de.ambafrance.org",
+                "https://es.ambafrance.org", "https://it.ambafrance.org", "https://pt.ambafrance.org",
+                "https://at.ambafrance.org", "https://pl.ambafrance.org", "https://nl.ambafrance.org",
+                "https://gr.ambafrance.org", "https://se.ambafrance.org", "https://no.ambafrance.org",
+                "https://fi.ambafrance.org", "https://dk.ambafrance.org", "https://ie.ambafrance.org",
+                "https://ch.ambafrance.org", "https://lu.ambafrance.org", "https://cz.ambafrance.org",
+                "https://hu.ambafrance.org", "https://ro.ambafrance.org",
+                # Amérique du Nord
+                "https://ca.ambafrance.org", "https://montreal.consulfrance.org",
+                "https://toronto.consulfrance.org", "https://vancouver.consulfrance.org",
+                "https://washington-ambassade.fr", "https://newyork.consulfrance.org",
+                "https://losangeles.consulfrance.org", "https://chicago.consulfrance.org",
+                "https://atlanta.consulfrance.org", "https://miami.consulfrance.org",
+                "https://boston.consulfrance.org", "https://sanfrancisco.consulfrance.org",
+                # Moyen-Orient
+                "https://ir.ambafrance.org", "https://tr.ambafrance.org", "https://lb.ambafrance.org",
+                "https://il.ambafrance.org", "https://ps.ambafrance.org", "https://eg.ambafrance.org",
+                "https://jo.ambafrance.org", "https://sa.ambafrance.org", "https://ae.ambafrance.org",
+                "https://qa.ambafrance.org", "https://om.ambafrance.org", "https://ye.ambafrance.org",
+                "https://iq.ambafrance.org", "https://am.ambafrance.org", "https://az.ambafrance.org",
+                "https://ge.ambafrance.org",
+                # Représentations permanentes & organisations
+                "https://onu-geneve.delegfrance.org",   # RP à l’ONU Genève
+                "https://onu.delegfrance.org",          # RP à l’ONU New York
+                "https://rpue.delegfrance.org",         # RP auprès de l’UE, Bruxelles
+                "https://otan.delegfrance.org",         # RP auprès de l’OTAN
+                "https://coe.delegfrance.org"           # RP auprès du Conseil de l’Europe
+            ]
+
+            # chemins probables vers « emploi / stages »
+            path_candidates = [
+                "/-Offres-d-emploi-et-stages-", "/-Recrutement-", "/-Nous-rejoindre-",
+                "/Spip.php?page=recherche&recherche=stage", "/recherche?q=stage",
+                "/recherche?q=emploi", "/-Stages-", "/-Emploi-", "/rubrique.php3?id_rubrique=",
+                "/Nous-rejoindre", "/recrutement"
+            ]
+
+            # sélecteurs prudents et variés (Spip/Drupal/WordPress)
+            default_selectors = {
+                "selector": "article, .liste-articles, .hentry, .post, .teaser, .content",
+                "date_selector": "time, .date, .post-date, .published",
+                "title_selector": "h2 a, h3 a, h2, h3, .entry-title a, .post-title a",
+                "link_selector": "a",
+                "location_selector": ".lieu, .location, .meta, .chapo, .surtitre",
+                "description_selector": "p, .resume, .summary, .entry-summary, .chapo"
+            }
+
+            discovered = []
+
+            def first_ok_url(base):
+                for p in path_candidates:
+                    test_url = base.rstrip("/") + p
+                    try:
+                        r = safe_get(test_url, timeout=12, max_retries=1)
+                        # On exige au minimum 200/OK et une page pas trop courte
+                        if r.status_code == 200 and len(r.text) > 800:
+                            return test_url
+                    except Exception:
+                        continue
+                return None
+
+            for base in base_urls:
+                careers_url = first_ok_url(base)
+                if not careers_url:
+                    # À défaut, on prend la page d’accueil et on laissera le sélecteur balayer
+                    careers_url = base
+                # On ajoute une source avec les sélecteurs par défaut
+                discovered.append({
+                    "nom": f"Ambassade/RP — {base}",
+                    "url": careers_url,
+                    **default_selectors
+                })
+
+            return discovered
+
+        # Ajout massif des ambassades / RP à la liste HTML
+        try:
+            embassy_sources = build_embassy_sources()
+            self.sources_html.extend(embassy_sources)
+            print(f"➕ Ambassades/RP ajoutées: {len(embassy_sources)} sources.")
+        except Exception as e:
+            print(f"⚠️ Impossible d’ajouter les ambassades: {e}")
 
     # ---------- Persistance des liens vus ----------
 
@@ -555,7 +647,7 @@ class VeilleStagesComplete:
                     duree_ok = self.match_duree(blob)
                     if not (zone_ok or duree_ok):
                         # tolérer si la source elle-même est pertinente
-                        if source["nom"].lower().startswith(("osce", "euiss", "eu-japan", "commission", "parlement")):
+                        if source["nom"].lower().startswith(("osce", "euiss", "eu-japan", "commission", "parlement", "ambassade/rp")):
                             pass
                         else:
                             continue
@@ -697,7 +789,7 @@ class VeilleStagesComplete:
         self.send_telegram(nouvelles)
 
         # Log console final
-        prios = sum(1 for o in nouvelles if self.is_prioritaire(f"{o['titre']} {o['description']}"))
+        prios = sum(1 for o in nouvelles if self.is_prioritaire(f"{o['titre']} {o['description']}") )
         print(f"📊 Total collectées: {len(toutes)} | Nouvelles: {len(nouvelles)} | Prioritaires: {prios}")
         print("✅ Veille terminée.")
 
