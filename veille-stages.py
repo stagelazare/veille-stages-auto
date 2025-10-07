@@ -679,7 +679,7 @@ class VeilleStagesTelegram:
                 print("   • Aucune nouvelle offre pertinente trouvée")
         
         print(f"✅ Veille terminée - {datetime.datetime.now().strftime('%H:%M:%S')}")
-        print(f"📧 Rapport envoyé à {self.email_to}")
+        print("📨 Rapport envoyé sur Telegram")
 
 # Point d'entrée principal
 if __name__ == "__main__":
