@@ -27,7 +27,7 @@ jobs:
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python veille-stage.py
+        run: python veille-stages.py
 
       - name: Upload results
         uses: actions/upload-artifact@v4
