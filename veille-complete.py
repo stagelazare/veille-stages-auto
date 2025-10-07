@@ -196,6 +196,248 @@ class VeilleStagesComplete:
                 "location_selector": "em, strong, .location",
                 "description_selector": "p"
             },
+                        {
+                "nom": "AFD - Agence Française de Développement",
+                "url": "https://www.afd.fr/fr/carrieres",
+                "selector": ".job-offer, .offre-emploi",
+                "date_selector": ".date-publication",
+                "title_selector": ".job-title, h3",
+                "link_selector": "a",
+                "location_selector": ".job-location",
+                "description_selector": ".job-description"
+            },
+            {
+                "nom": "CFI - Agence française de développement médias",
+                "url": "https://www.cfi.fr/recrutement",
+                "selector": ".job-listing",
+                "date_selector": ".date",
+                "title_selector": ".title",
+                "link_selector": "a",
+                "location_selector": ".location",
+                "description_selector": ".excerpt"
+            },
+            {
+                "nom": "Expertise France",
+                "url": "https://www.expertisefrance.fr/recrutement",
+                "selector": ".offre, .job-item",
+                "date_selector": ".date-publication",
+                "title_selector": ".titre",
+                "link_selector": "a",
+                "location_selector": ".lieu",
+                "description_selector": ".description"
+            },
+            {
+                "nom": "France Volontaires",
+                "url": "https://france-volontaires.org/offres-emploi",
+                "selector": ".job-offer",
+                "date_selector": ".date",
+                "title_selector": "h3",
+                "link_selector": "a",
+                "location_selector": ".location",
+                "description_selector": ".summary"
+            },
+            {
+                "nom": "CIRAD",
+                "url": "https://www.cirad.fr/nous-rejoindre",
+                "selector": ".offre-emploi",
+                "date_selector": ".date",
+                "title_selector": ".titre",
+                "link_selector": "a",
+                "location_selector": ".lieu",
+                "description_selector": ".resume"
+            },
+            {
+                "nom": "IRD - Institut de Recherche pour le Développement",
+                "url": "https://www.ird.fr/nous-rejoindre",
+                "selector": ".job-listing",
+                "date_selector": ".date",
+                "title_selector": ".title",
+                "link_selector": "a",
+                "location_selector": ".location",
+                "description_selector": ".description"
+            },
+            
+            # === OPÉRATEURS MEAE - CULTURE, ÉDUCATION, FRANCOPHONIE ===
+            {
+                "nom": "Institut français",
+                "url": "https://www.institutfrancais.com/fr/carrieres",
+                "selector": ".job-offer",
+                "date_selector": ".date",
+                "title_selector": ".title",
+                "link_selector": "a",
+                "location_selector": ".location",
+                "description_selector": ".summary"
+            },
+            {
+                "nom": "AEFE - Agence pour l'enseignement français à l'étranger",
+                "url": "https://www.aefe.fr/vie-du-reseau/ressources-humaines",
+                "selector": ".offre",
+                "date_selector": ".date",
+                "title_selector": ".titre",
+                "link_selector": "a",
+                "location_selector": ".lieu",
+                "description_selector": ".description"
+            },
+            {
+                "nom": "Campus France",
+                "url": "https://www.campusfrance.org/fr/recrutement",
+                "selector": ".job-listing",
+                "date_selector": ".date",
+                "title_selector": ".title",
+                "link_selector": "a",
+                "location_selector": ".location",
+                "description_selector": ".excerpt"
+            },
+            
+            # === OPÉRATEURS MEAE - COMMERCE EXTÉRIEUR ===
+            {
+                "nom": "Business France - VIE/VIA",
+                "url": "https://mon-vie-via.businessfrance.fr/",
+                "selector": ".offer-item, .job-item",
+                "date_selector": ".date-publication",
+                "title_selector": ".offer-title, h3",
+                "link_selector": "a",
+                "location_selector": ".offer-location",
+                "description_selector": ".offer-description"
+            },
+            {
+                "nom": "Business France - Emplois",
+                "url": "https://businessfrance-recrute.talent-soft.com/",
+                "selector": ".job-listing",
+                "date_selector": ".date",
+                "title_selector": ".title",
+                "link_selector": "a",
+                "location_selector": ".location",
+                "description_selector": ".summary"
+            },
+            
+            # === ORGANISATIONS INTERNATIONALES ===
+            {
+                "nom": "ONU Carrières",
+                "url": "https://careers.un.org/lbw/home.aspx?lang=FR",
+                "selector": ".job-item, .vacancy",
+                "date_selector": ".posting-date, .date-posted",
+                "title_selector": ".job-title, h3",
+                "link_selector": "a",
+                "location_selector": ".duty-station, .location",
+                "description_selector": ".job-summary, .description"
+            },
+            {
+                "nom": "OSCE Jobs",
+                "url": "https://jobs.osce.org/",
+                "selector": ".vacancy, .job-listing",
+                "date_selector": ".date-published, .date",
+                "title_selector": ".title, h3",
+                "link_selector": "a",
+                "location_selector": ".location",
+                "description_selector": ".summary, .description"
+            },
+            {
+                "nom": "OTAN Stages",
+                "url": "https://www.nato.int/cps/fr/natolive/72041.htm",
+                "selector": ".internship-listing",
+                "date_selector": ".date",
+                "title_selector": ".title",
+                "link_selector": "a",
+                "location_selector": ".location",
+                "description_selector": ".description"
+            },
+            
+            # === UNION EUROPÉENNE ===
+            {
+                "nom": "Commission européenne - Stages",
+                "url": "https://ec.europa.eu/stages/home_fr",
+                "selector": ".stage-offer",
+                "date_selector": ".date",
+                "title_selector": ".title",
+                "link_selector": "a",
+                "location_selector": ".location",
+                "description_selector": ".description"
+            },
+            {
+                "nom": "Parlement européen - Stages Schuman",
+                "url": "https://ep-stages.gestmax.eu/website/homepage",
+                "selector": ".stage-listing",
+                "date_selector": ".date",
+                "title_selector": ".title",
+                "link_selector": "a",
+                "location_selector": ".location",
+                "description_selector": ".summary"
+            },
+            {
+                "nom": "EUISS - Institut d'études de sécurité",
+                "url": "https://www.iss.europa.eu/about-us/opportunities/euiss-traineeships-2025-2026",
+                "selector": ".opportunity",
+                "date_selector": ".date",
+                "title_selector": ".title",
+                "link_selector": "a",
+                "location_selector": ".location",
+                "description_selector": ".description"
+            },
+            {
+                "nom": "EU-Japan Centre",
+                "url": "https://www.eu-japan.eu/internships",
+                "selector": ".internship-offer",
+                "date_selector": ".date",
+                "title_selector": ".title",
+                "link_selector": "a",
+                "location_selector": ".location",
+                "description_selector": ".description"
+            },
+            
+            # === THINK TANKS ET INSTITUTS ===
+            {
+                "nom": "IFRI",
+                "url": "https://www.ifri.org/fr/recrutement",
+                "selector": ".job-offer",
+                "date_selector": ".date",
+                "title_selector": ".title",
+                "link_selector": "a",
+                "location_selector": ".location",
+                "description_selector": ".summary"
+            },
+            {
+                "nom": "Institut du Monde Arabe",
+                "url": "https://www.imarabe.org/fr/nous-rejoindre",
+                "selector": ".offre",
+                "date_selector": ".date",
+                "title_selector": ".titre",
+                "link_selector": "a",
+                "location_selector": ".lieu",
+                "description_selector": ".description"
+            },
+            {
+                "nom": "Foundation Alliance Française",
+                "url": "https://www.fondation-alliancefr.org/?cat=803",
+                "selector": ".job-listing",
+                "date_selector": ".date",
+                "title_selector": ".title",
+                "link_selector": "a",
+                "location_selector": ".location",
+                "description_selector": ".excerpt"
+            },
+            
+            # === AUTRES SOURCES IMPORTANTES ===
+            {
+                "nom": "Trésor International",
+                "url": "https://www.tresor.economie.gouv.fr/tresor-international",
+                "selector": ".offre",
+                "date_selector": ".date",
+                "title_selector": ".titre",
+                "link_selector": "a",
+                "location_selector": ".lieu",
+                "description_selector": ".description"
+            },
+            {
+                "nom": "Sciences Po Carrières",
+                "url": "https://www.sciencespo.fr/carrieres/fr/stages/",
+                "selector": ".stage-offer",
+                "date_selector": ".date",
+                "title_selector": ".title",
+                "link_selector": "a",
+                "location_selector": ".location",
+                "description_selector": ".description"
+            }
         ]
 
     # ---------- Persistance des liens vus ----------
